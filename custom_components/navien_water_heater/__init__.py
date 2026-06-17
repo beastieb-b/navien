@@ -2,8 +2,10 @@
 from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from .navien_api import (
-    NavilinkConnect
+    NavilinkConnect,
+    UserNotFound,
 )
 from .const import DOMAIN
 import logging
@@ -21,8 +23,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     for subdir in subdirs:
         aws_path = os.path.join(aws_path,subdir)
     navilink = NavilinkConnect(userId=entry.data.get("username",""), passwd=entry.data.get("password",""), polling_interval=entry.data.get("polling_interval",15), device_index=entry.data.get("device_index",0), aws_cert_path=os.path.join(aws_path,"AmazonRootCA1.pem"))
+    try:
+        await navilink.start(raise_on_error=True)
+    except UserNotFound as err:
+        raise ConfigEntryAuthFailed("Invalid Navien credentials") from err
+    except Exception as err:
+        raise ConfigEntryNotReady(f"Unable to connect to the Navien cloud: {err}") from err
     hass.data[DOMAIN][entry.entry_id] = navilink
-    await navilink.start()    
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

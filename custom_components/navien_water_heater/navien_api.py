@@ -3,7 +3,7 @@ import enum
 import json
 import logging
 import uuid
-from datetime import datetime,timedelta
+from datetime import datetime,timedelta,timezone
 import AWSIoTPythonSDK.MQTTLib as mqtt
 import aiohttp
 
@@ -44,7 +44,7 @@ class NavilinkConnect():
         self.client_lock = asyncio.Lock()
         self.last_poll = None
 
-    async def start(self):
+    async def start(self, raise_on_error=False):
         if self.polling_interval > 0:
             valid_user = True
             while not self.connected and valid_user and not self.shutting_down:
@@ -52,9 +52,13 @@ class NavilinkConnect():
                     await self.login()
                 except (UserNotFound,UnableToConnect,NoResponseData) as err:
                     _LOGGER.error(err)
+                    if raise_on_error:
+                        raise
                     valid_user=False
                 except Exception as e:
                     _LOGGER.error("Connection error during start up: " +str(e))
+                    if raise_on_error:
+                        raise
                     await asyncio.sleep(15)
                 else:
                     asyncio.create_task(self._start())
@@ -91,7 +95,7 @@ class NavilinkConnect():
         """
         Login to the REST API and save user information
         """
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.post(NavilinkConnect.navienWebServer + "/user/sign-in", json={"userId": self.userId, "password": self.passwd}) as response:
                 # If an error occurs this will raise it, otherwise it calls get_device and returns after device is obtained from the server
                 if response.status != 200:
@@ -100,9 +104,8 @@ class NavilinkConnect():
                 if response_data.get('msg','') == "USER_NOT_FOUND":
                     raise UserNotFound("Unable to log in with given credentials")
                 try:
-                    response_data["data"]
                     self.user_info = response_data["data"]
-                except:
+                except (KeyError, TypeError):
                     raise NoResponseData("Unexpected problem while retrieving user data")
                 
                 return await self._get_device_list()
@@ -112,17 +115,16 @@ class NavilinkConnect():
         Get list of devices for the given user credentials
         """
         headers = {"Authorization":self.user_info.get("token",{}).get("accessToken","")}
-        async with aiohttp.ClientSession(headers=headers) as session:
+        async with aiohttp.ClientSession(headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as session:
             async with session.post(NavilinkConnect.navienWebServer + "/device/list", json={"offset":0,"count":20,"userId":self.userId}) as response:
                 # If an error occurs this will raise it, otherwise it returns the gateway list.
                 if response.status != 200:
                     raise UnableToConnect("Unexpected response while retrieving device list")
                 response_data = await response.json()
                 try:
-                    response_data["data"]
                     device_info_list = response_data["data"]
                     self.device_info = device_info_list[self.device_index]
-                except:
+                except (KeyError, IndexError, TypeError):
                     raise NoResponseData("Unexpected problem while retrieving device list")
                 
                 if self.polling_interval > 0:
@@ -221,7 +223,7 @@ class NavilinkConnect():
             if response_event :=  self.response_events.get(session_id,None):
                 try:
                     await asyncio.wait_for(response_event.wait(),timeout=self.polling_interval)
-                except:
+                except asyncio.TimeoutError:
                     pass
                 response_event.clear()
                 self.response_events.pop(session_id)
@@ -318,7 +320,7 @@ class NavilinkConnect():
         await self._get_channel_status(channel_number)
 
     def get_session_id(self):
-        return str(int(round((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds()*1000)))
+        return str(int(round((datetime.now(timezone.utc) - datetime(1970, 1, 1, tzinfo=timezone.utc)).total_seconds()*1000)))
 
     def async_handle_channel_info(self, client, userdata, message):
         response = json.loads(message.payload)
@@ -437,12 +439,12 @@ class NavilinkChannel:
                 channel_status["DHWSettingTemp"] = round(channel_status["DHWSettingTemp"] / 2.0, 1)
                 channel_status["avgInletTemp"] = round(channel_status["avgInletTemp"] / 2.0, 1)
                 channel_status["avgOutletTemp"] = round(channel_status["avgOutletTemp"] / 2.0, 1)            
-                for i in range(channel_status.get("unitCount",0)):
-                    channel_status["unitInfo"]["unitStatusList"][i]["gasInstantUsage"] = round((channel_status["unitInfo"]["unitStatusList"][i]["gasInstantUsage"] * GIUFactor)/ 10.0, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["accumulatedGasUsage"] = round(channel_status["unitInfo"]["unitStatusList"][i]["accumulatedGasUsage"] / 10.0, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["DHWFlowRate"] = round(channel_status["unitInfo"]["unitStatusList"][i]["DHWFlowRate"] / 10.0, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["currentOutletTemp"] = round(channel_status["unitInfo"]["unitStatusList"][i]["currentOutletTemp"] / 2.0, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["currentInletTemp"] = round(channel_status["unitInfo"]["unitStatusList"][i]["currentInletTemp"] / 2.0, 1)
+                for unit_status in channel_status.get("unitInfo",{}).get("unitStatusList",[]):
+                    unit_status["gasInstantUsage"] = round((unit_status["gasInstantUsage"] * GIUFactor)/ 10.0, 1)
+                    unit_status["accumulatedGasUsage"] = round(unit_status["accumulatedGasUsage"] / 10.0, 1)
+                    unit_status["DHWFlowRate"] = round(unit_status["DHWFlowRate"] / 10.0, 1)
+                    unit_status["currentOutletTemp"] = round(unit_status["currentOutletTemp"] / 2.0, 1)
+                    unit_status["currentInletTemp"] = round(unit_status["currentInletTemp"] / 2.0, 1)
         elif self.channel_info.get("temperatureType",2) == TemperatureType.FAHRENHEIT.value:
             if channel_status["unitType"] in [DeviceSorting.NFC.value,DeviceSorting.NCB_H.value,DeviceSorting.NFB.value,DeviceSorting.NVW.value,]:
                 GIUFactor = 10
@@ -464,10 +466,10 @@ class NavilinkChannel:
                 DeviceSorting.CAS_NFB.value,
                 DeviceSorting.CAS_NVW.value,
             ]:
-                for i in range(channel_status.get("unitCount",0)):
-                    channel_status["unitInfo"]["unitStatusList"][i]["gasInstantUsage"] = round(channel_status["unitInfo"]["unitStatusList"][i]["gasInstantUsage"] * GIUFactor * 3.968, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["accumulatedGasUsage"] = round(channel_status["unitInfo"]["unitStatusList"][i]["accumulatedGasUsage"] * 35.314667 / 10.0, 1)
-                    channel_status["unitInfo"]["unitStatusList"][i]["DHWFlowRate"] = round(channel_status["unitInfo"]["unitStatusList"][i]["DHWFlowRate"] / 37.85, 1)
+                for unit_status in channel_status.get("unitInfo",{}).get("unitStatusList",[]):
+                    unit_status["gasInstantUsage"] = round(unit_status["gasInstantUsage"] * GIUFactor * 3.968, 1)
+                    unit_status["accumulatedGasUsage"] = round(unit_status["accumulatedGasUsage"] * 35.314667 / 10.0, 1)
+                    unit_status["DHWFlowRate"] = round(unit_status["DHWFlowRate"] / 37.85, 1)
 
         return channel_status
 

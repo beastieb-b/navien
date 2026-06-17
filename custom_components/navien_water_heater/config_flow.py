@@ -4,13 +4,20 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 from .const import DOMAIN
-from .navien_api import NavilinkConnect
+from .navien_api import NavilinkConnect, UserNotFound
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required("username"): str,
-        vol.Required("password"): str,       
+        vol.Required("password"): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.PASSWORD)
+        ),       
     }
 )
 
@@ -28,7 +35,7 @@ class NavienConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self.password = ''
         self.device_info = None
         self.device_index = 0
-        self.polling_interval = 30
+        self.polling_interval = 15
 
     VERSION = 1
 
@@ -46,8 +53,10 @@ class NavienConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         try:
             navien = NavilinkConnect(user_input['username'],user_input['password'],polling_interval=0)
             self.device_info = await navien.login()
-        except Exception:  # pylint: disable=broad-except
+        except UserNotFound:
             errors["base"] = "invalid_auth"
+        except Exception:  # pylint: disable=broad-except
+            errors["base"] = "cannot_connect"
         else:
             self.username = user_input['username']
             self.password = user_input['password']

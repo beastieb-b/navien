@@ -18,7 +18,7 @@ from .const import DOMAIN
 _LOGGER = logging.getLogger(__name__)
 
 SUPPORT_FLAGS = (
-    WaterHeaterEntityFeature.AWAY_MODE | WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE
+    WaterHeaterEntityFeature.AWAY_MODE | WaterHeaterEntityFeature.TARGET_TEMPERATURE | WaterHeaterEntityFeature.OPERATION_MODE | WaterHeaterEntityFeature.ON_OFF
 )
 
 
@@ -138,9 +138,9 @@ class NavienWaterHeaterEntity(WaterHeaterEntity):
                 target_temp = round(2 * target_temp)
         else:
             if hass_units == "metric":
-                target_temp == round((target_temp*9/5) + 32)
+                target_temp = round((target_temp*9/5) + 32)
             else:
-                target_temp == round((target_temp-32)*10/9)
+                target_temp = round((target_temp-32)*10/9)
         await self.channel.set_temperature(target_temp)
 
 
@@ -151,6 +151,14 @@ class NavienWaterHeaterEntity(WaterHeaterEntity):
     async def async_turn_away_mode_off(self):
         """Turn away mode off."""
         await self.channel.set_power_state(True)
+
+    async def async_turn_on(self):
+        """Turn the water heater on."""
+        await self.channel.set_power_state(True)
+
+    async def async_turn_off(self):
+        """Turn the water heater off."""
+        await self.channel.set_power_state(False)
 
     async def async_set_operation_mode(self,operation_mode):
         """Set operation mode"""

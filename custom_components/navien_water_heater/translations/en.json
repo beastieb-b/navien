@@ -26,6 +26,7 @@
     },
     "error": {
       "invalid_auth": "Invalid NaviLink user credentials",
+      "cannot_connect": "Failed to connect to the NaviLink cloud service",
       "unknown": "Unknown error"
     },
     "abort": {
