@@ -1,12 +1,21 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.2`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.3`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **Background tasks leaked on every unload/reload.** `_start()` waited with
+  `asyncio.FIRST_EXCEPTION`, but on a clean shutdown the poll task exits without
+  raising, so the wait never returned and the connection-lost and 2 AM-refresh
+  tasks were never cancelled (a stale refresh task would later call
+  `disconnect()` on a dead client). Switched to `FIRST_COMPLETED`.
+- **Unloading mid-reconnect didn't stop the reconnect loop.** `disconnect()`
+  only set `shutting_down` inside its `client and connected` guard, so unloading
+  while disconnected left the reconnect loop running. It now records a real
+  shutdown unconditionally (and reconnect-driven calls never clear it).
 - **Crash with multiple units on one channel (upstream #45).** `convert_channel_status`
   iterated `range(unitCount)` and indexed into `unitStatusList`, raising
   `IndexError` when the device reported a `unitCount` larger than the actual

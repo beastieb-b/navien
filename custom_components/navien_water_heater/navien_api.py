@@ -76,7 +76,10 @@ class NavilinkConnect():
                 asyncio.create_task(self._server_connection_lost(), name = "Connection Lost Event"),
                 asyncio.create_task(self._refresh_connection(), name = "Reresh Connection")
             ]
-            done, pending = await asyncio.wait(tasks,return_when=asyncio.FIRST_EXCEPTION)
+            # FIRST_COMPLETED (not FIRST_EXCEPTION): on a clean shutdown the poll task
+            # exits normally without raising, and FIRST_EXCEPTION would never wake here,
+            # leaking the connection-lost and refresh tasks on every unload/reload.
+            done, pending = await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
             for task in done:
                 name = task.get_name()
                 try:
@@ -190,8 +193,13 @@ class NavilinkConnect():
         await self.disconnect(shutting_down=False)
 
     async def disconnect(self,shutting_down=True):
+        # Always record a real shutdown, even if we are mid-reconnect (client gone /
+        # not connected), otherwise unloading during a reconnect window leaves the
+        # reconnect loop running. Reconnect-driven calls pass shutting_down=False and
+        # must never clear a shutdown already in progress.
+        if shutting_down:
+            self.shutting_down = True
         if self.client and self.connected:
-            self.shutting_down = shutting_down
             await self.loop.run_in_executor(None,self.client.disconnect)
 
     def _on_online(self):
