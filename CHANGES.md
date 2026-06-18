@@ -1,12 +1,18 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.4`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.5`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **Disconnect event set from the wrong thread.** `_on_offline` runs on the AWS
+  IoT SDK's network thread and called `asyncio.Event.set()` directly. asyncio
+  primitives are not thread-safe, so a server-initiated disconnect could fail to
+  wake `_server_connection_lost` and the auto-reconnect might not fire. Now
+  marshalled to the loop thread via `call_soon_threadsafe`, like the other SDK
+  callbacks.
 - **Incomplete status messages crashed the MQTT callback.** `convert_channel_status`
   read `powerStatus` / `onDemandUseFlag` / `avgCalorie` / `unitType` directly, and
   `current_temperature` summed outlet temps that could be missing — a partial

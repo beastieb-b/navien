@@ -206,8 +206,11 @@ class NavilinkConnect():
         self.connected = True
 
     def _on_offline(self):
+        # Invoked on the AWS IoT SDK's network thread. asyncio.Event is not
+        # thread-safe, so hand the set() back to the event loop thread (the
+        # message handlers below do the same via call_soon_threadsafe).
         if not self.shutting_down:
-            self.disconnect_event.set()
+            self.loop.call_soon_threadsafe(self.disconnect_event.set)
 
     async def async_subscribe(self,topic,QoS=1,callback=None):
         try:
