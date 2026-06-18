@@ -1,12 +1,19 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.5`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.6`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **Water-heater entity could break on missing `temperatureType`.** The
+  `temperature_unit` property read `channel_info["temperatureType"]` directly,
+  while every other read in the codebase uses `.get("temperatureType", 2)` and
+  `convert_channel_info` never writes a default back. A channel info payload
+  without that key would raise `KeyError` on every read of `temperature_unit`
+  (which HA reads constantly), breaking the entity. Now consistent with the
+  rest of the code.
 - **Disconnect event set from the wrong thread.** `_on_offline` runs on the AWS
   IoT SDK's network thread and called `asyncio.Event.set()` directly. asyncio
   primitives are not thread-safe, so a server-initiated disconnect could fail to

@@ -77,7 +77,7 @@ class NavienWaterHeaterEntity(WaterHeaterEntity):
     def temperature_unit(self):
         """Return temperature unit."""
         temp_unit = UnitOfTemperature.CELSIUS
-        if self.channel.channel_info["temperatureType"] == TemperatureType.FAHRENHEIT.value:
+        if self.channel.channel_info.get("temperatureType",2) == TemperatureType.FAHRENHEIT.value:
             temp_unit = UnitOfTemperature.FAHRENHEIT
         return temp_unit
 
