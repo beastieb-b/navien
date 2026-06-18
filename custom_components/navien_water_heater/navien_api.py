@@ -404,23 +404,29 @@ class NavilinkChannel:
     async def set_power_state(self,state):
         if not self.waiting_for_response:
             self.waiting_for_response = True
-            await self.hub._power_command(state,self.channel_number)
-            self.publish_update()
-            self.waiting_for_response = False
+            try:
+                await self.hub._power_command(state,self.channel_number)
+                self.publish_update()
+            finally:
+                self.waiting_for_response = False
 
     async def set_hot_button_state(self,state):
         if not self.waiting_for_response:
             self.waiting_for_response = True
-            await self.hub._hot_button_command(state,self.channel_number)
-            self.publish_update()
-            self.waiting_for_response = False
+            try:
+                await self.hub._hot_button_command(state,self.channel_number)
+                self.publish_update()
+            finally:
+                self.waiting_for_response = False
 
     async def set_temperature(self,temp):
         if not self.waiting_for_response:
             self.waiting_for_response = True
-            await self.hub._temperature_command(temp,self.channel_number)
-            self.publish_update()
-            self.waiting_for_response = False
+            try:
+                await self.hub._temperature_command(temp,self.channel_number)
+                self.publish_update()
+            finally:
+                self.waiting_for_response = False
 
     def convert_channel_status(self,channel_status):
         channel_status["powerStatus"] = channel_status.get("powerStatus",0) == 1

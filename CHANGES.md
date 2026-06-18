@@ -1,12 +1,18 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.6`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.7`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **A failed command could permanently brick a channel's controls.** The
+  `waiting_for_response` guard in `set_power_state` / `set_hot_button_state` /
+  `set_temperature` was set to `True` before the awaited command and only reset
+  to `False` after it. If the command raised, the flag stuck `True` and every
+  future power/temperature/on-demand command for that channel was silently
+  ignored until HA restarted. Reset is now in a `try/finally`.
 - **Water-heater entity could break on missing `temperatureType`.** The
   `temperature_unit` property read `channel_info["temperatureType"]` directly,
   while every other read in the codebase uses `.get("temperatureType", 2)` and
