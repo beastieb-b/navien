@@ -1,7 +1,7 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.7`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.8`.
 
 These patches fix several open upstream issues and bugs found in review.
 
@@ -67,7 +67,8 @@ These patches fix several open upstream issues and bugs found in review.
 - The config flow distinguishes invalid credentials (`invalid_auth`) from a
   cloud-connection failure (`cannot_connect`) instead of reporting every
   failure as bad credentials.
-- Removed unused imports (`asyncio.sleep`, `homeassistant.core.callback`).
+- Removed unused imports (`asyncio.sleep`, `homeassistant.core.callback`,
+  `navien_api.DeviceSorting` in `switch.py`).
 
 ## Not changed (and why)
 
