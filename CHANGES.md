@@ -1,12 +1,18 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.3`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.4`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **Incomplete status messages crashed the MQTT callback.** `convert_channel_status`
+  read `powerStatus` / `onDemandUseFlag` / `avgCalorie` / `unitType` directly, and
+  `current_temperature` summed outlet temps that could be missing — a partial
+  status payload (the same protocol quirk behind #45) raised inside the callback
+  and froze entity updates. These now fall back to safe defaults / skip missing
+  readings.
 - **Background tasks leaked on every unload/reload.** `_start()` waited with
   `asyncio.FIRST_EXCEPTION`, but on a clean shutdown the poll task exits without
   raising, so the wait never returned and the connection-lost and 2 AM-refresh

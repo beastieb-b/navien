@@ -420,16 +420,17 @@ class NavilinkChannel:
             self.waiting_for_response = False
 
     def convert_channel_status(self,channel_status):
-        channel_status["powerStatus"] = channel_status["powerStatus"] == 1
-        channel_status["onDemandUseFlag"] = channel_status["onDemandUseFlag"] == 1
-        channel_status["avgCalorie"] = channel_status["avgCalorie"]/2.0
+        channel_status["powerStatus"] = channel_status.get("powerStatus",0) == 1
+        channel_status["onDemandUseFlag"] = channel_status.get("onDemandUseFlag",0) == 1
+        channel_status["avgCalorie"] = channel_status.get("avgCalorie",0)/2.0
+        unit_type = channel_status.get("unitType")
         if self.channel_info.get("temperatureType",2) == TemperatureType.CELSIUS.value:
-            if channel_status["unitType"] in [DeviceSorting.NFC.value,DeviceSorting.NCB_H.value,DeviceSorting.NFB.value,DeviceSorting.NVW.value,]:
+            if unit_type in [DeviceSorting.NFC.value,DeviceSorting.NCB_H.value,DeviceSorting.NFB.value,DeviceSorting.NVW.value,]:
                 GIUFactor = 100
             else:
                 GIUFactor = 10
 
-            if channel_status["unitType"] in [
+            if unit_type in [
                 DeviceSorting.NPE.value,
                 DeviceSorting.NPN.value,
                 DeviceSorting.NPE2.value,
@@ -454,12 +455,12 @@ class NavilinkChannel:
                     unit_status["currentOutletTemp"] = round(unit_status["currentOutletTemp"] / 2.0, 1)
                     unit_status["currentInletTemp"] = round(unit_status["currentInletTemp"] / 2.0, 1)
         elif self.channel_info.get("temperatureType",2) == TemperatureType.FAHRENHEIT.value:
-            if channel_status["unitType"] in [DeviceSorting.NFC.value,DeviceSorting.NCB_H.value,DeviceSorting.NFB.value,DeviceSorting.NVW.value,]:
+            if unit_type in [DeviceSorting.NFC.value,DeviceSorting.NCB_H.value,DeviceSorting.NFB.value,DeviceSorting.NVW.value,]:
                 GIUFactor = 10
             else:
                 GIUFactor = 1
 
-            if channel_status["unitType"] in [
+            if unit_type in [
                 DeviceSorting.NPE.value,
                 DeviceSorting.NPN.value,
                 DeviceSorting.NPE2.value,
