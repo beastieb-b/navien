@@ -454,9 +454,9 @@ class NavilinkChannel:
                 DeviceSorting.CAS_NFB.value,
                 DeviceSorting.CAS_NVW.value,
             ]:
-                channel_status["DHWSettingTemp"] = round(channel_status["DHWSettingTemp"] / 2.0, 1)
-                channel_status["avgInletTemp"] = round(channel_status["avgInletTemp"] / 2.0, 1)
-                channel_status["avgOutletTemp"] = round(channel_status["avgOutletTemp"] / 2.0, 1)            
+                channel_status["DHWSettingTemp"] = round(channel_status.get("DHWSettingTemp",0) / 2.0, 1)
+                channel_status["avgInletTemp"] = round(channel_status.get("avgInletTemp",0) / 2.0, 1)
+                channel_status["avgOutletTemp"] = round(channel_status.get("avgOutletTemp",0) / 2.0, 1)            
                 for unit_status in channel_status.get("unitInfo",{}).get("unitStatusList",[]):
                     unit_status["gasInstantUsage"] = round((unit_status["gasInstantUsage"] * GIUFactor)/ 10.0, 1)
                     unit_status["accumulatedGasUsage"] = round(unit_status["accumulatedGasUsage"] / 10.0, 1)
@@ -493,8 +493,8 @@ class NavilinkChannel:
 
     def convert_channel_info(self,channel_info):
         if channel_info.get("temperatureType",2) == TemperatureType.CELSIUS.value:
-            channel_info["setupDHWTempMin"] = round(channel_info["setupDHWTempMin"]/ 2.0, 1)
-            channel_info["setupDHWTempMax"] = round(channel_info["setupDHWTempMax"]/ 2.0, 1)
+            channel_info["setupDHWTempMin"] = round(channel_info.get("setupDHWTempMin",0)/ 2.0, 1)
+            channel_info["setupDHWTempMax"] = round(channel_info.get("setupDHWTempMax",0)/ 2.0, 1)
 
         return channel_info
         

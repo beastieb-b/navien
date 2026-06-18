@@ -1,12 +1,18 @@
 # Fork changes
 
 Personal fork of [nikshriv/hass_navien_water_heater](https://github.com/nikshriv/hass_navien_water_heater),
-forked at upstream commit `2d76924`. Bumped to version `1.0.8`.
+forked at upstream commit `2d76924`. Bumped to version `1.0.9`.
 
 These patches fix several open upstream issues and bugs found in review.
 
 ## Bug fixes
 
+- **Celsius channel info/status could crash on missing temperature keys.**
+  `convert_channel_info` read `setupDHWTempMin`/`setupDHWTempMax` directly while
+  *building the channel objects*, so a Celsius payload missing them raised
+  `KeyError` and the integration created no entities at all; `convert_channel_status`
+  likewise read `DHWSettingTemp`/`avgInletTemp`/`avgOutletTemp` directly. Both now
+  use `.get(...)`, completing the incomplete-message hardening (same class as #45).
 - **A failed command could permanently brick a channel's controls.** The
   `waiting_for_response` guard in `set_power_state` / `set_hot_button_state` /
   `set_temperature` was set to `True` before the awaited command and only reset
